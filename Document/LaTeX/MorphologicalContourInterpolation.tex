@@ -75,24 +75,35 @@ remote module \url{https://github.com/KitwareMedical/ITKMorphologicalContourInte
 \tableofcontents
 
 
-Run-length encoding is used in many image compression applications~\cite{wikiRLE}.
-Images with groups of pixels with the same value are best suited for such compression,
-and label maps (Fig.~\ref{fig:opportunity}) are one such example.
+Proliferation of automatic segmentation algorithms is on the rise,
+but their performance is measured against a manually created `gold standard' segmentation.
+Additionally, manual segmentation is sometimes required for other purposes.
+
+As anyone who has ever done manual image segmentation can tell you,
+it becomes monotonous very quickly.
+This is especially true for high-resolution 3D images,
+i.e. for 3D images with thin `slices' (because there are many of them).
+The classic `cure' for this is inter-slice interpolation~\cite{fig:InOut}.
+Namely, in regions where the anatomy is slowly changing and adjacent slices are quite similar,
+some slices can be skipped by a human segmenter and then interpolated by an algorithm.
+
+In this paper, we shortly describe the method of Albu et al.~\cite{Albu2008},
+and focus on our implementation based on it.
 
 \begin{figure}
 \center
-\includegraphics[scale=0.3]{brainParc.png}
-\includegraphics[scale=0.3]{vb-seg.png}
-\includegraphics[scale=0.3]{wb-seg.png}
-\includegraphics[scale=0.3]{wb-crop.png}
-\itkcaption[Opportunity]{When there are pixels with the same value
-next to each other, it is an opportunity for compression. Left to right:
-brainParc (parcellation of a brain),
-vb-seg (segmentation of vertebral bodies),
-wb-seg (segmentation of a whole-body CT using watersheds algorithm),
-wb-crop (its shoulder-to-hips cropped version).}
-\label{fig:opportunity}
+\includegraphics[scale=0.265]{In1.png}
+\includegraphics[scale=0.265]{Out1.png}
+\includegraphics[scale=0.265]{In2.png}
+\includegraphics[scale=0.265]{Out2.png}
+\itkcaption[InOut]{Examples of inputs (left) and outputs (right).
+First row: two labels, manual segmentation on coronal slices only.
+Second row: four labels, manual segmentation along all three principal axes of the body.}
+\label{fig:InOut}
 \end{figure}
+
+
+\section{Albu's method}
 
 \doxygen{LabelMap}~\cite{Lehmann2007} uses run-length encoding to store objects
 as a collection of \textit{runs} and a background value.
