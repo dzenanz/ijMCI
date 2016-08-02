@@ -9,7 +9,7 @@ backref,
 colorlinks,linkcolor={blue},citecolor={blue},urlcolor={blue},
 ]{hyperref}
 
-\title{n--Dimensional morphological contour interpolation}
+\title{$n$D morphological contour interpolation}
 
 %
 % NOTE: This is the last number of the "handle" URL that
@@ -53,8 +53,8 @@ colorlinks,linkcolor={blue},citecolor={blue},urlcolor={blue},
 \noindent
 This document describes a new class, \code{itk::MorphologicalContourInterpolator},
 which implements a method proposed by Albu et al~\cite{Albu2008}.
-This class is n--dimensional, and supports inputs of 3 or more dimensions.
-`Slices' are n-1--dimensional, and can be both automatically detected and manually set.
+This class is $n$-dimensional, and supports inputs of 3 or more dimensions.
+`Slices' are $n-1$-dimensional, and can be both automatically detected and manually set.
 
 The class is efficient in both memory used and execution time.
 It requires little memory in addition to allocation of input and output images.
@@ -87,9 +87,6 @@ The classic `cure' for this is inter-slice interpolation~\cite{fig:InOut}.
 Namely, in regions where the anatomy is slowly changing and adjacent slices are quite similar,
 some slices can be skipped by a human segmenter and then interpolated by an algorithm.
 
-In this paper, we shortly describe the method of Albu et al.~\cite{Albu2008},
-and focus on our implementation based on it.
-
 \begin{figure}
 \center
 \includegraphics[scale=0.265]{In1.png}
@@ -103,19 +100,33 @@ Second row: four labels, manual segmentation along all three principal axes of t
 \end{figure}
 
 
-\section{Albu's method}
+\section{Class description}
 
-\doxygen{LabelMap}~\cite{Lehmann2007} uses run-length encoding to store objects
-as a collection of \textit{runs} and a background value.
-It is well suited for computing statistics on a static label map,
-i.e. label map which will not change during the program execution.
+\code{itk::MorphologicalContourInterpolation} is a class derived from
+\doxygen{ImageToImageFilter}.
+Input is $n$-dimensional, usually 3D.
+`Slices' are cross-sections along one axis, usually 2D.
+Locations of manually segmented slices can be set using
+\code{SetUseCustomSlicePositionsOn} and \code{SetLabeledSliceIndices}.
+The default is auto-detection of manually segmented slices using a heuristic.
+%If there is a pixel whose all 4-way neighbors belong the the same label
+%except along one axis, and along that axis its neighbors are 0 (background),
+%then that axis should be interpolated along.
 
-\code{itk::RLEImage} uses a simpler data structure, which makes it more suited
-for on-the-fly editing.
-Thus \code{itk::RLEImage} and \doxygen{LabelMap} have quite different goals.
+The filter can be restricted to interpolate only along one axis
+and/or to interpolate just one label.
+The default is to interpolate all labels along all axes.
+
+HeuristicAlignment
+
+UseDistanceTransform
+
+UseBallStructuringElement
+
+Priority of axes and labels in the output (bigger number takes precedence)
 
 
-\section{Data structure}
+\section{Performance measurements}
 
 $n$-dimensional RLEImage is implemented as $n-1$-dimensional \doxygen{Image} of run-length lines.
 A run-length line is implemented as \code{std::vector} of run-length segments.
