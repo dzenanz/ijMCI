@@ -63,7 +63,7 @@ takes around 1-2 seconds on a quad-core processor.
 
 The class is tested to operate on both \doxygen{Image} and \code{itk::RLEImage}.
 Since all the processing is done on extracted slices,
-usage of \code{itk::RLEImage} for input and/or output does not affect performance.
+usage of \code{itk::RLEImage} for input and/or affects performance to a limited degree.
 
 This class is implemented to ease manual segmentation in ITK-SNAP \url{www.itksnap.org}.
 The class, along with test data and automated regression tests is packaged as an ITK
@@ -74,6 +74,8 @@ remote module \url{https://github.com/KitwareMedical/ITKMorphologicalContourInte
 
 \tableofcontents
 
+
+\section{Introduction}
 
 Proliferation of automatic segmentation algorithms is on the rise,
 but their performance is measured against a manually created `gold standard' segmentation.
@@ -145,7 +147,7 @@ However, this approach loses the geodesic aspect of shape growth and
 is not much faster (which was our hope) for our test examples.
 We decided to retain it, and it is activated by \code{UseDistanceTransform}.
 
-To minimize usage of memory, the output of interpolation is written
+To minimize the usage of memory, the output of interpolation is written
 directly into the output image.
 The interpolation is done on each axis successively,
 in the order of increasing indices (0, 1, 2, ... or X, Y, Z, ...).
@@ -160,96 +162,48 @@ reliability of automated regression tests.
 
 \section{Performance measurements}
 
-$n$-dimensional RLEImage is implemented as $n-1$-dimensional \doxygen{Image} of run-length lines.
-A run-length line is implemented as \code{std::vector} of run-length segments.
-A run-length segment is a pair consisting of pixel value and its repetition count.
-A run-length line runs along the fastest chaning index, i.e. X-axis. C++ code:
+The remote module%~\url{https://github.com/KitwareMedical/ITKMorphologicalContourInterpolation}
+contains 360 automated regression tests, 120 for each `interpolation algorithm'
+(repeated dilations with ball element, repeated dilations with cross element, and distance transform).
+However the execution time is practically independent of the structuring element (ball/cross),
+and only somewhat faster for distance transform approach.
+Therefore, the performance was measured only for ball structuring element.
 
-\begin{verbatim}
-typedef std::pair< CounterType, PixelType > RLSegment;
-typedef std::vector< RLSegment > RLLine;
-typedef typename itk::Image< RLLine, VImageDimension - 1 > BufferType;
-typename BufferType::Pointer m_Buffer;
-\end{verbatim}
+Also, about a third of the tests use handcrafted test images
+which were useful during the class development, and are of little relevance now.
+Thus, table~\ref{tab:time} and figure~\ref{fig:time} only contain measurements for realistic inputs.
+Two of those inputs are depicted in Fig.~\ref{fig:InOut}.
 
-All the standard iterators are specialized for \code{itk::RLEImage}:
-const/writable $\times$ withIndex/without explicit index $\times$ plain/region/scanline.
-In addition to this, \doxygen{RegionOfInterestImageFilter} is specialized for
-Image$\rightarrow$RLEImage, RLEImage$\rightarrow$Image and RLEImage$\rightarrow$RLEImage cases.
-If the RegionOfInterest is set to LargestPossibleRegion, the class effectively
-does only conversion between standard \doxygen{Image} and \code{itk::RLEImage}.
-If RegionOfInterest is smaller than LargestPossibleRegion,
-it really behaves as a classic region of interest filter.
-For RLEImage$\rightarrow$RLEImage case, the \doxygen{RegionOfInterestImageFilter}
-can behave as a caster for template types for repetition counter and pixel values,
-e.g. cast \code{itk::RLEImage<short,short>} into \code{itk::RLEImage<long,char>}.
-
-\section{ITK-SNAP Performance measurements}
-
-ITK-SNAP is a software application used to segment structures in 3D medical images.
-The authors' vision was to create a tool that would be dedicated to a specific function,
-segmentation, and would be easy to use and learn.
-ITK-SNAP is free, open-source, and multi-platform.
-
-Since version 3.4, snap uses RLEImage for storing and editing segmentation layer.
-The interaction speed was not noticeable degraded,
-but memory consumption has significantly reduced (Tab~\ref{tab:memoryConsumption}).
-
-\begin{table}[h]
+\begin{table}[hbt]
 	\centering
-		\begin{tabular}{llllll}
-		\textbf{Image} & \textbf{Version} & \textbf{Image Size (MVox)} & \textbf{Number of labels} & \textbf{Commit Size (MB)} & \textbf{Difference}            \\
-		None           & 3.x nightly      & 0                          & 0                         & 154                       & 100\%                          \\
-		vb-seg         & 3.x nightly      & 116                        & 9                         & 731                       & 100\%                          \\
-		wb-seg         & 3.x nightly      & 390                        & 58672                     & 3058                      & 100\%                          \\
-		None           & dev\_3.6         & 0                          & 0                         & 165                       & {\color{red} \textbf{+7\%}}    \\
-		vb-seg         & dev\_3.6         & 116                        & 9                         & 508                       & {\color{green} \textbf{-31\%}} \\
-		wb-seg         & dev\_3.6         & 390                        & 58672                     & 2267                      & {\color{green} \textbf{-26\%}}
+		\begin{tabular}{llll}
+								 & \textbf{RLEImage} & \textbf{itk::Image} & \textbf{itk::Image+Conversion} \\
+		\textbf{PC1} & 1.97              & 1.43                & 1.54                           \\
+		\textbf{PC2} & 1.35              & 1.13                & 1.12                          
 		\end{tabular}
-	\caption{Memory consumption before addition of RLEImage (3.x nightly) and after (dev\_3.6).}
-	\label{tab:memoryConsumption}
+	\caption{Average time taken to process an input. Unit: seconds.
+	First two columns represent the image type over which the filter was templated.
+	The third column shows time of running the filter on Image
+	and doing double conversion of the input (Image$\rightarrow$RLEImage$\rightarrow$Image).}
+	\label{tab:time}
 \end{table}
 
-Scrolling through slices along different axes causes
-extraction of slices from the 3D image, called `slicing'.
-Slicing is the most frequently executed operation, and its performance is very important.
-To take full advantage of \code{itk::RLEImage},
-a slicing filter was specialized for it in ITK-SNAP.
-Comparison of slicing speed across the principal axes for different input images
-is given in Tab.~\ref{tab:slicingPerformance}.
+\begin{figure}[htb]
+\center
+\includegraphics{Time.pdf}
+\itkcaption[Time]{Average time taken to process an input. Unit: seconds.
+See Tab.~\ref{tab:time} for explanation of measurement points.}
+\label{fig:time}
+\end{figure}
 
-\begin{table}[h]
-	\centering
-		\begin{tabular}{lrrrr}
-																																& \textbf{Image}           & \textbf{brainParc}          & \textbf{vb-seg}             & \textbf{wb-seg}              \\
-		\multirow{-2}{*}{}                  												& \textbf{Labels}          & \textbf{114}                & \textbf{9}                  & \textbf{58672}               \\
-																																& X                        & 256                         & 640                         & 512                          \\
-																																& Y                        & 256                         & 633                         & 512                          \\
-		\multirow{-3}{*}{\textbf{Dimensions}}                        & Z                        & 256                         & 299                         & 1559                         \\
-																																& X                        & 51.0                        & 105.9                       & 993.6                        \\
-																																& Y                        & 39.2                        & 71.5                        & 912.1                        \\
-		\multirow{-3}{*}{\textbf{itk::LabelMap}}                     & Z                        & 39.0                        & 94.8                        & 874.7                        \\
-		{\color[HTML]{036400} }                                      & {\color[HTML]{036400} X} & {\color[HTML]{036400} 11.7} & {\color[HTML]{036400} 30.0} & {\color[HTML]{036400} 154.2} \\
-		{\color[HTML]{036400} }                                      & {\color[HTML]{036400} Y} & {\color[HTML]{036400} 1.1}  & {\color[HTML]{036400} 2.9}  & {\color[HTML]{036400} 15.4}  \\
-		\multirow{-3}{*}{{\color[HTML]{036400} \textbf{SNAP+RLE}}}   & {\color[HTML]{036400} Z} & {\color[HTML]{036400} 1.0}  & {\color[HTML]{036400} 5.6}  & {\color[HTML]{036400} 8.1}   \\
-		{\color[HTML]{9A0000} }                                      & {\color[HTML]{9A0000} X} & {\color[HTML]{9A0000} 5.2}  & {\color[HTML]{9A0000} 22.5} & {\color[HTML]{9A0000} 73.9}  \\
-		{\color[HTML]{9A0000} }                                      & {\color[HTML]{9A0000} Y} & {\color[HTML]{9A0000} 3.6}  & {\color[HTML]{9A0000} 10.4} & {\color[HTML]{9A0000} 43.4}  \\
-		\multirow{-3}{*}{{\color[HTML]{9A0000} \textbf{SNAP-noRLE}}} & {\color[HTML]{9A0000} Z} & {\color[HTML]{9A0000} 3.6}  & {\color[HTML]{9A0000} 21.8} & {\color[HTML]{9A0000} 14.1}  \\
-																																& X                        & 10.3                        & 26.3                        & 79.1                         \\
-																																& Y                        & 0.5                         & 0.6                         & 1.4                          \\
-		\multirow{-3}{*}{\textbf{pureITK}}                           & Z                        & 0.4                         & 0.7                         & 0.6                         
-		\end{tabular}
-	\caption{Slicing performance of \texttt{LabelMap} using \texttt{ChangeRegionLabelMapFilter},
-	ITK-SNAP with \texttt{itk::RLEImage}, ITK-SNAP with \texttt{Image},
-	and \texttt{Image} using \texttt{RegionOfInterestImageFilter}. All durations are in milliseconds.}
-	\label{tab:slicingPerformance}
-\end{table}
+The tests were done on two computers.
+PC1 has Ubuntu 16.04, Core2 Q9300 quad core processor, 4 GB of RAM,
+a classic hard disk and was bought in 2008.
+PC2 has Windows 7, Xeon E3-1220 quad core processor, 32 GB of RAM,
+a solid state drive and was bought in 2015.
 
-These results show that slicing across the run-length lines is about
-twice slower than through uncompressed image.
-However, slicing along run-length lines is faster than the algorithm
-ITK-SNAP employed before, and not significantly slower than  `pure ITK' RoI filter.
-Additionally, it is a few times faster than slicing through \doxygen{LabelMap}.
+These results show that usage of \code{itk::RLEImage} has a performance
+penalty over \doxygen{Image}, but that is not significant (20-30\%).
 
 \section{Acknowledgments}
 
