@@ -83,11 +83,11 @@ As anyone who has ever done manual image segmentation can tell you,
 it becomes monotonous very quickly.
 This is especially true for high-resolution 3D images,
 i.e. for 3D images with thin `slices' (because there are many of them).
-The classic `cure' for this is inter-slice interpolation~\cite{fig:InOut}.
+The classic `cure' for this is inter-slice interpolation (Fig.~\ref{fig:InOut}).
 Namely, in regions where the anatomy is slowly changing and adjacent slices are quite similar,
 some slices can be skipped by a human segmenter and then interpolated by an algorithm.
 
-\begin{figure}
+\begin{figure}[htb]
 \center
 \includegraphics[scale=0.265]{In1.png}
 \includegraphics[scale=0.265]{Out1.png}
@@ -117,13 +117,45 @@ The filter can be restricted to interpolate only along one axis
 and/or to interpolate just one label.
 The default is to interpolate all labels along all axes.
 
-HeuristicAlignment
+The shapes in `source slices' need to be aligned for interpolation.
+Albu's method calls for alignment with
+minimum shape displacement achieving maximum shape overlap.
+However that alignment requires inefficient exhaustive search,
+so \code{HeuristicAlignment} is implemented and enabled by default.
+\code{HeuristicAlignment} uses bread-first-search strategy
+with `no translation' and `centroid alignment' as first two seeds.
+`No translation' seed is required to prevent exceptional cases in which
+`centroid alignment' produces no overlap for some concave shapes.
+The search is terminated when further expansion of search space
+(relative translations) leads to pixel overlap counts
+less than 90\% of the current maximum.
 
-UseDistanceTransform
+The most compute intensive part of the algorithm~\cite{Albu2008}
+is generation of two dilation sequences which transform the intersection
+of the two shapes into each of them.
+Those dilations can be done with either \doxygen{BinaryBallStructuringElement}
+or \doxygen{BinaryCrossStructuringElement}.
+The option \code{UseBallStructuringElement} controls which one is used.
 
-UseBallStructuringElement
+As generation of the dilation sequences is computationally intensive,
+we also experimented with usage of distance field.
+A histogram of pixel counts of shapes `A' and `B' for different distances
+can be used to calculate a threshold which directly produces median shape.
+However, this approach loses the geodesic aspect of shape growth and
+is not much faster (which was our hope) for our test examples.
+We decided to retain it, and it is activated by \code{UseDistanceTransform}.
 
-Priority of axes and labels in the output (bigger number takes precedence)
+To minimize usage of memory, the output of interpolation is written
+directly into the output image.
+The interpolation is done on each axis successively,
+in the order of increasing indices (0, 1, 2, ... or X, Y, Z, ...).
+In case of conflicts between labels,
+the label with bigger number has precedence (gets written into output).
+This is in contrast to `not writing pixels which have already been written once'.
+The chosen convention ensures that the output is not dependent on the
+variability of execution introduced by multi-threading.
+This elimination of variability also improves
+reliability of automated regression tests.
 
 
 \section{Performance measurements}
