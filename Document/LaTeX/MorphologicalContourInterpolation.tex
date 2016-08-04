@@ -63,7 +63,7 @@ takes around 1-2 seconds on a quad-core processor.
 
 The class is tested to operate on both \doxygen{Image} and \code{itk::RLEImage}.
 Since all the processing is done on extracted slices,
-usage of \code{itk::RLEImage} for input and/or affects performance to a limited degree.
+usage of \code{itk::RLEImage} for input and/or output affects performance to a limited degree.
 
 This class is implemented to ease manual segmentation in ITK-SNAP \url{www.itksnap.org}.
 The class, along with test data and automated regression tests is packaged as an ITK
@@ -162,7 +162,7 @@ reliability of automated regression tests.
 
 \section{Performance measurements}
 
-The remote module%~\url{https://github.com/KitwareMedical/ITKMorphologicalContourInterpolation}
+The remote module %~\url{https://github.com/KitwareMedical/ITKMorphologicalContourInterpolation}
 contains 360 automated regression tests, 120 for each `interpolation algorithm'
 (repeated dilations with ball element, repeated dilations with cross element, and distance transform).
 However the execution time is practically independent of the structuring element (ball/cross),
