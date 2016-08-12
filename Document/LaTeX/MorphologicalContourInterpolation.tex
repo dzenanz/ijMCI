@@ -21,13 +21,17 @@ colorlinks,linkcolor={blue},citecolor={blue},urlcolor={blue},
 
 % Increment the release number whenever significant changes are made.
 % The author and/or editor can define 'significant' however they like.
-\release{0.01}
+\release{0.2}
 
-\author{D{\v z}enan Zuki{\' c}$^{1}$, Jared Vicory$^{2}$, Matthew McCormick$^{3}$ and Paul Yushkevich$^{4}$}
-\authoraddress{$^{1}$dzenan.zukic@kitware.com\\
-               $^{2}$jared.vicory@kitware.com\\
-							 $^{3}$matt.mccormick@kitware.com\\
-               $^{4}$pauly2@mail.med.upenn.edu}
+\author{D{\v z}enan Zuki{\' c}$^{1}$, Jared Vicory$^{2}$, Matthew McCormick$^{3}$
+Laura E.M. Wisse$^{4}$, Guido Gerig$^{5}$ and Paul Yushkevich$^{6}$}
+\authoraddress{$^{1}$Kitware Inc., dzenan.zukic@kitware.com\\
+               $^{2}$Kitware Inc., jared.vicory@kitware.com\\
+               $^{3}$Kitware Inc., matt.mccormick@kitware.com\\
+               $^{4}$Penn Image Computing \& Science Laboratory, Department of Radiology, University of Pennsylvania, laura.wisse@uphs.upenn.edu\\
+               $^{5}$Department of Computer Science and Engineering, NYU, gerig@nyu.edu\\
+               $^{6}$Penn Image Computing \& Science Laboratory, Department of Radiology, University of Pennsylvania, pauly2@mail.med.upenn.edu}
+
 
 \begin{document}
 \IJhandlefooter{\IJhandlerIDnumber}
@@ -52,10 +56,15 @@ colorlinks,linkcolor={blue},citecolor={blue},urlcolor={blue},
 \begin{abstract}
 \noindent
 This document describes a new class, \code{itk::MorphologicalContourInterpolator},
-which implements a method proposed by Albu et al~\cite{Albu2008}.
+which implements a method proposed by Albu et al. in 2008.
+Interpolation is done by first determining correspondence between shapes on adjacent
+segmented slices by detecting overlaps, then aligning the corresponding shapes,
+generating transition sequence of one-pixel dilations and taking the median as result.
+Recursion is employed if the original segmented slices are separated by more than one empty slice.
+
+
 This class is $n$-dimensional, and supports inputs of 3 or more dimensions.
 `Slices' are $n-1$-dimensional, and can be both automatically detected and manually set.
-
 The class is efficient in both memory used and execution time.
 It requires little memory in addition to allocation of input and output images.
 The implementation is multi-threaded, and processing one of the test inputs
@@ -65,12 +74,14 @@ The class is tested to operate on both \doxygen{Image} and \code{itk::RLEImage}.
 Since all the processing is done on extracted slices,
 usage of \code{itk::RLEImage} for input and/or output affects performance to a limited degree.
 
-This class is implemented to ease manual segmentation in ITK-SNAP \url{www.itksnap.org}.
+This class is implemented to ease manual segmentation in ITK-SNAP (\url{www.itksnap.org}).
 The class, along with test data and automated regression tests is packaged as an ITK
 remote module \url{https://github.com/KitwareMedical/ITKMorphologicalContourInterpolation}.
 \end{abstract}
 
 \IJhandlenote{\IJhandlerIDnumber}
+
+\newpage
 
 \tableofcontents
 
@@ -78,29 +89,61 @@ remote module \url{https://github.com/KitwareMedical/ITKMorphologicalContourInte
 \section{Introduction}
 
 Proliferation of automatic segmentation algorithms is on the rise,
-but their performance is measured against a manually created `gold standard' segmentation.
-Additionally, manual segmentation is sometimes required for other purposes.
+but their performance is measured against a manually created `gold standard' segmentation~\cite{py06nimg}.
+Additionally, manual segmentation is required to train automatic segmentation algorithms,
+as well as in problems where automatic segmentation is not sufficiently reliable.
 
-As anyone who has ever done manual image segmentation can tell you,
+As anyone who has ever done manual image segmentation can attest,
 it becomes monotonous very quickly.
-This is especially true for high-resolution 3D images,
-i.e. for 3D images with thin `slices' (because there are many of them).
-The classic `cure' for this is inter-slice interpolation (Fig.~\ref{fig:InOut}).
+This is especially true for high-resolution 3D images with many slices.
+One strategy to reduce the need for repetitive tracing is inter-slice interpolation (Fig.~\ref{fig:InOut}).
 Namely, in regions where the anatomy is slowly changing and adjacent slices are quite similar,
 some slices can be skipped by a human segmenter and then interpolated by an algorithm.
 
-\begin{figure}[htb]
+\begin{figure}[!htb]
 \center
 \includegraphics[scale=0.265]{In1.png}
 \includegraphics[scale=0.265]{Out1.png}
 \includegraphics[scale=0.265]{In2.png}
 \includegraphics[scale=0.265]{Out2.png}
 \itkcaption[InOut]{Examples of inputs (left) and outputs (right).
-First row: two labels, manual segmentation on coronal slices only.
-Second row: four labels, manual segmentation along all three principal axes of the body.}
+First row: hippocampal sub-fields in in-vivo $T_2$-weighted MRI,
+two labels, manual segmentation on coronal slices only.
+Second row: amygdalar nuclei in ex-vivo 9.4 Tesla MRI,
+four labels, manual segmentation along all three principal axes of the body.}
 \label{fig:InOut}
 \end{figure}
 
+Albu's method~\cite{Albu2008} is centered around interpolating a single shape on
+slice $i$ into a single shape on slice $j$.
+Shapes are contiguous groups of pixels with the same label value.
+Correspondence between shapes is determined by examining overlaps
+of shapes from from slices $i$ and $j$.
+If a shape on one slice overlaps more than one shape on the other slice,
+the one shape is split into disjoint regions based on dilations
+starting from overlaps (intersections),
+and those disjoint regions are interpolated as if they were separate shapes.
+
+Before interpolating $i$ shape into $j$ shape, they are aligned
+to achieve maximum shape overlap with minimum shape displacement.
+When writing out the interpolated slices, the opposite translation is applied.
+To create gradual transition, the overlap shape $o$ is created
+by intersection of shapes $i$ and $j$.
+Then two transition sequences are generated: $o\rightarrow i$ and $o\rightarrow j$.
+Each step in these sequences is a one-pixel dilation of the previous step,
+constrained by the final shape (to not leak outside).
+Then $o\rightarrow j$ sequence is reversed (to form $j\rightarrow o$) and
+merged with $o\rightarrow i$ by forming union at each step.
+The resulting sequence is a smooth transition from shape $i$ into $j$.
+The final interpolating shape is the median in the sequence, such that its
+pixel-count difference to both $i$ and $j$ shapes is as equal as possible.
+
+This approach retains some distinctive features in interpolated shapes
+by using constrained dilations for generating the transition sequence,
+unlike some surface interpolation approaches which tend to smooth the
+shapes which are being interpolated.
+Also, this method does not involve changing representation into a surface,
+so it can be implemented efficiently which is of significance in practice.
 
 \section{Class description}
 
@@ -120,9 +163,8 @@ and/or to interpolate just one label.
 The default is to interpolate all labels along all axes.
 
 The shapes in `source slices' need to be aligned for interpolation.
-Albu's method calls for alignment with
-minimum shape displacement achieving maximum shape overlap.
-However that alignment requires inefficient exhaustive search,
+Albu's method~\cite{Albu2008} calls for alignment
+which requires inefficient exhaustive search,
 so \code{HeuristicAlignment} is implemented and enabled by default.
 \code{HeuristicAlignment} uses breadth-first-search strategy
 with `no translation' and `centroid alignment' as first two seeds.
@@ -132,9 +174,8 @@ The search is terminated when further expansion of search space
 (relative translations) leads to pixel overlap counts
 less than 90\% of the current maximum.
 
-The most compute intensive part of the algorithm~\cite{Albu2008}
-is generation of two dilation sequences which transform the intersection
-of the two shapes into each of them.
+The most compute intensive part of the algorithm
+is the generation of two dilation sequences which gradually transform the shapes.
 Those dilations can be done with either \doxygen{BinaryBallStructuringElement}
 or \doxygen{BinaryCrossStructuringElement}.
 The option \code{UseBallStructuringElement} controls which one is used.
@@ -150,10 +191,13 @@ We decided to retain it, and it is activated by \code{UseDistanceTransform}.
 To minimize the usage of memory, the output of interpolation is written
 directly into the output image.
 The interpolation is done on each axis successively,
-in the order of increasing indices (0, 1, 2, ... or X, Y, Z, ...).
+in the order of increasing indices (0, 1, 2, 3 ... or X, Y, Z, t ...
+or sagittal, coronal, axial, temporal ...), and a union is implicitly made.
 In case of conflicts between labels,
 the label with bigger number has precedence (gets written into output).
-This is in contrast to `not writing pixels which have already been written once'.
+This is in contrast to `keep results of earlier processed axes and labels'
+(not writing pixels which have already been written once)
+and `overwrite the result by latest processed axis or label'.
 The chosen convention ensures that the output is not dependent on the
 variability of execution introduced by multi-threading.
 This elimination of variability also improves
@@ -175,17 +219,17 @@ Thus, table~\ref{tab:time} and figure~\ref{fig:time} only contain measurements f
 Two of those inputs are depicted in Fig.~\ref{fig:InOut}.
 
 \begin{table}[hbt]
-	\centering
-		\begin{tabular}{llll}
-								 & \textbf{RLEImage} & \textbf{itk::Image} & \textbf{itk::Image+Conversion} \\
-		\textbf{PC1} & 1.97              & 1.43                & 1.54                           \\
-		\textbf{PC2} & 1.35              & 1.13                & 1.12                          
-		\end{tabular}
-	\caption{Average time taken to process an input. Unit: seconds.
-	First two columns represent the image type over which the filter was templated.
-	The third column shows time of running the filter on Image
-	and doing double conversion of the input (Image$\rightarrow$RLEImage$\rightarrow$Image).}
-	\label{tab:time}
+    \centering
+        \begin{tabular}{llll}
+                     & \textbf{RLEImage} & \textbf{itk::Image} & \textbf{itk::Image+Conversion} \\
+        \textbf{PC1} & 1.97              & 1.43                & 1.54                           \\
+        \textbf{PC2} & 1.35              & 1.13                & 1.12
+        \end{tabular}
+    \caption{Average time taken to process an input. Unit: seconds.
+    First two columns represent the image type over which the filter was templated.
+    The third column shows time of running the filter on Image
+    and doing double conversion of the input (Image$\rightarrow$RLEImage$\rightarrow$Image).}
+    \label{tab:time}
 \end{table}
 
 \begin{figure}[htb]
