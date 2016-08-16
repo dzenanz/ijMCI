@@ -24,13 +24,14 @@ colorlinks,linkcolor={blue},citecolor={blue},urlcolor={blue},
 \release{0.2}
 
 \author{D{\v z}enan Zuki{\' c}$^{1}$, Jared Vicory$^{2}$, Matthew McCormick$^{3}$
-Laura E.M. Wisse$^{4}$, Guido Gerig$^{5}$ and Paul Yushkevich$^{6}$}
+Laura E.M. Wisse$^{4}$, Guido Gerig$^{5}$, Paul Yushkevich$^{6}$ and Stephen Aylward$^{7}$}
 \authoraddress{$^{1}$Kitware Inc., dzenan.zukic@kitware.com\\
                $^{2}$Kitware Inc., jared.vicory@kitware.com\\
                $^{3}$Kitware Inc., matt.mccormick@kitware.com\\
                $^{4}$Penn Image Computing \& Science Laboratory, Department of Radiology, University of Pennsylvania, laura.wisse@uphs.upenn.edu\\
                $^{5}$Department of Computer Science and Engineering, NYU, gerig@nyu.edu\\
-               $^{6}$Penn Image Computing \& Science Laboratory, Department of Radiology, University of Pennsylvania, pauly2@mail.med.upenn.edu}
+               $^{6}$Penn Image Computing \& Science Laboratory, Department of Radiology, University of Pennsylvania, pauly2@mail.med.upenn.edu\\
+               $^{7}$Kitware Inc., stephen.aylward@kitware.com}
 
 
 \begin{document}
@@ -138,10 +139,18 @@ The resulting sequence is a smooth transition from shape $i$ into $j$.
 The final interpolating shape is the median in the sequence, such that its
 pixel-count difference to both $i$ and $j$ shapes is as equal as possible.
 
-This approach retains some distinctive features in interpolated shapes
-by using constrained dilations for generating the transition sequence,
-unlike some surface interpolation approaches which tend to smooth the
-shapes which are being interpolated.
+This approach retains some distinctive features, unlike some surface interpolation
+approaches which tend to smooth the shapes which are being interpolated.
+If there is large overlap and no shifting of structures
+between contours being interpolated, this method works well.
+If the genus of the object changes, this approach might also be better
+than some traditional shape interpolation methods.
+But if a structure appears to be moving along the boundary
+(an elliptical shape structure appears to rotate between slices),
+if the center-line of the object is not orthogonal to the slices
+so that the object appears to translate between slices, or if the overlap is low,
+then a shape-based method (that incorporates constraints to preserve
+boundary curvature or the total area of the interpolated structure) might be preferred.
 Also, this method does not involve changing representation into a surface,
 so it can be implemented efficiently which is of significance in practice.
 
