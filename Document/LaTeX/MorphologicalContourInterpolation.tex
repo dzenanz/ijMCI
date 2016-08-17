@@ -29,7 +29,7 @@ Laura E.M. Wisse$^{4}$, Guido Gerig$^{5}$, Paul Yushkevich$^{6}$ and Stephen Ayl
                $^{2}$Kitware Inc., jared.vicory@kitware.com\\
                $^{3}$Kitware Inc., matt.mccormick@kitware.com\\
                $^{4}$Penn Image Computing \& Science Laboratory, Department of Radiology, University of Pennsylvania, laura.wisse@uphs.upenn.edu\\
-               $^{5}$Department of Computer Science and Engineering, NYU, gerig@nyu.edu\\
+               $^{5}$NYU Tandon School of Engineering, Department of Computer Science and Engineering, gerig@nyu.edu\\
                $^{6}$Penn Image Computing \& Science Laboratory, Department of Radiology, University of Pennsylvania, pauly2@mail.med.upenn.edu\\
                $^{7}$Kitware Inc., stephen.aylward@kitware.com}
 
@@ -63,7 +63,6 @@ segmented slices by detecting overlaps, then aligning the corresponding shapes,
 generating transition sequence of one-pixel dilations and taking the median as result.
 Recursion is employed if the original segmented slices are separated by more than one empty slice.
 
-
 This class is $n$-dimensional, and supports inputs of 3 or more dimensions.
 `Slices' are $n-1$-dimensional, and can be both automatically detected and manually set.
 The class is efficient in both memory used and execution time.
@@ -95,7 +94,7 @@ Additionally, manual segmentation is required to train automatic segmentation al
 as well as in problems where automatic segmentation is not sufficiently reliable.
 
 As anyone who has ever done manual image segmentation can attest,
-it becomes monotonous very quickly.
+it becomes monotonous very quickly and thus also may become less reliable.
 This is especially true for high-resolution 3D images with many slices.
 One strategy to reduce the need for repetitive tracing is inter-slice interpolation (Fig.~\ref{fig:InOut}).
 Namely, in regions where the anatomy is slowly changing and adjacent slices are quite similar,
@@ -153,6 +152,12 @@ then a shape-based method (that incorporates constraints to preserve
 boundary curvature or the total area of the interpolated structure) might be preferred.
 Also, this method does not involve changing representation into a surface,
 so it can be implemented efficiently which is of significance in practice.
+
+Manual corrections are possible after invoking this filter through ITK-SNAP,
+as well as undo, redo and other standard editing features.
+This is important for cases of imperfect interpolation,
+and correcting an incorrect segmentation is usually quicker than
+doing it manually in each slice.
 
 \section{Class description}
 
