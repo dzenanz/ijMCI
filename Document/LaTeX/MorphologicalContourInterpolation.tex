@@ -218,50 +218,95 @@ This elimination of variability also improves
 reliability of automated regression tests.
 
 
-\section{Performance measurements}
+\section{Evaluation}
 
-The remote module %~\url{https://github.com/KitwareMedical/ITKMorphologicalContourInterpolation}
-contains 360 automated regression tests, 120 for each `interpolation algorithm'
-(repeated dilations with ball element, repeated dilations with cross element, and distance transform).
-However the execution time is practically independent of the structuring element (ball/cross),
-and only somewhat faster for distance transform approach.
-Therefore, the performance was measured only for ball structuring element.
+To test how well the interpolation works,
+we tested it on a couple of images with full manual segmentations.
+Starting from a fully manually segmented image
+leave every n-th slice (to simulate sparse manual segmentation)
+and clear rest of the image,
+then use that as an input to the filter
+and compare output with the original image (Fig.~\ref{fig:Eval4}).
+The images are courtesy of Ale{\v s} Neubert~\cite{Neubert2012}.
+Table~\ref{tab:dsI} is taken from~\cite{ZukicCGF}.
 
-Also, about a third of the tests use handcrafted test images
-which were useful during the class development, and are of little relevance now.
-Thus, table~\ref{tab:time} and figure~\ref{fig:time} only contain measurements for realistic inputs.
-Two of those inputs are depicted in Fig.~\ref{fig:InOut}.
-
-\begin{table}[hbt]
-    \centering
-        \begin{tabular}{llll}
-                     & \textbf{RLEImage} & \textbf{itk::Image} & \textbf{itk::Image+Conversion} \\
-        \textbf{PC1} & 1.97              & 1.43                & 1.54                           \\
-        \textbf{PC2} & 1.35              & 1.13                & 1.12
-        \end{tabular}
-    \caption{Average time taken to process an input. Unit: seconds.
-    First two columns represent the image type over which the filter was templated.
-    The third column shows time of running the filter on Image
-    and doing double conversion of the input (Image$\rightarrow$RLEImage$\rightarrow$Image).}
-    \label{tab:time}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{|l|l|l|l|l|l|r|r|l|}
+\hline
+\textbf{Dataset} & \textbf{Sx,y} & \textbf{Sz} & \textbf{xyR} & \textbf{zR} & \textbf{AF} & \textbf{N$_{sVB}$} & \textbf{MVox} & \textbf{A$_{iso}$} \\ \hline
+case\_2 & 0.34 & 1.2 & 641 & 296 & 3.49 & 9 & 121.62 & 0.52 \\ \hline
+case\_10 & 0.34 & 1 & 636 & 299 & 2.91 & 8 & 120.94 & 0.49 \\ \hline
+\end{tabular}
+\caption{
+Imaging information about the datasets used for the quantitative evaluation.
+S$_{x,y}$ -- voxel spacing in $x-$ and $y-$directions (millimeters),
+S$_z$ -- spacing along $z-$axis.
+xyR -- resolution of image along $x-$ and $y-$axes, zR - $z-$resolution.
+AF -- anisotropy factor $\frac{S_z}{S_{xy}}$.
+N$_{sVB}$ -- number of segmented vertebral bodies in a dataset.
+MVox -- millions of voxels.
+A$_{iso}$ -- spacing of isotropic image with equivalent voxel volume.
+}
+\label{tab:dsI}
 \end{table}
+
+The tests were done on a PC which was bought in 2015. It has Windows 7,
+Xeon E3-1220 quad core processor, 32 GB of RAM and a solid state drive.
+Fig.~\ref{fig:qual} presents the qualitative results visually.
+Summary results are presented in Fig.~\ref{fig:dsc}.
+Figure~\ref{fig:c10l} gives detailed results for a single image.
+
+\begin{figure}[!htb]
+\center
+\includegraphics[scale=0.42]{c10x.png}
+\includegraphics[scale=0.42]{c10y.png}
+\includegraphics[scale=0.42]{c10z.png}
+\includegraphics[scale=0.42]{c10a.png}
+\itkcaption[Eval4]{Interpolated output overlaid over a synthetic input with sparsity 4,
+i.e. every 4th slice from the original manually segmented image is kept.
+This is a cropped version of case\_10 dataset, containing L3, L4 and L5 vertebrae.
+Top left: synthetic slicing perpendicular to sagittal axis. Top right: coronal.
+Bottom left: axial. Bottom right: all three.}
+\label{fig:Eval4}
+\end{figure}
+
+\begin{figure}[htbp]
+\center
+\includegraphics[scale=0.42]{diffX.png}
+\includegraphics[scale=0.42]{diffY.png}
+\includegraphics[scale=0.42]{diffZ.png}
+\includegraphics[scale=0.42]{diffA.png}
+\itkcaption[qual]{Visual qualitative results.
+Same data and order as in Fig.~\ref{fig:Eval4}.
+Cyan, yellow and green pixels are false positives (oversegmentation).
+Violet, red and blue are false negatives (undersegmentation).}
+\label{fig:qual}
+\end{figure}
+
+\begin{figure}[htbp]
+\center
+\includegraphics[scale=0.65]{dsc.pdf}
+\itkcaption[dsc]{Loss of precision with increasingly sparse `manual' segmentations.
+Dice similarity coefficient, positive predictive value and negative predictive value.
+To calculate PPV and NPV, a background equal in size to the objects is assumed.
+Averaged over both images and four axes (X, Y, Z, X+Y+Z).}
+\label{fig:dsc}
+\end{figure}
 
 \begin{figure}[htb]
 \center
-\includegraphics{Time.pdf}
-\itkcaption[Time]{Average time taken to process an input. Unit: seconds.
-See Tab.~\ref{tab:time} for explanation of measurement points.}
-\label{fig:time}
+\includegraphics[scale=0.7]{c10l-x.pdf}
+\includegraphics[scale=0.7]{c10l-y.pdf}
+\includegraphics[scale=0.7]{c10l-z.pdf}
+\includegraphics[scale=0.7]{c10l-a.pdf}
+\itkcaption[c10l]{Loss of precision for Case\_10. Legend the same as in Fig.~\ref{fig:dsc}.
+Top left: synthetic slicing perpendicular to sagittal axis. Top right: coronal.
+Bottom left: axial. Bottom right: all three.
+Because the resolution is already 3$\times$ lower along Z axis,
+adding sparsity exacerbates the problem -- most errors are false negatives (undersegmentation).}
+\label{fig:c10l}
 \end{figure}
-
-The tests were done on two computers.
-PC1 has Ubuntu 16.04, Core2 Q9300 quad core processor, 4 GB of RAM,
-a classic hard disk and was bought in 2008.
-PC2 has Windows 7, Xeon E3-1220 quad core processor, 32 GB of RAM,
-a solid state drive and was bought in 2015.
-
-These results show that usage of \code{itk::RLEImage} has a performance
-penalty over \doxygen{Image}, but that is not significant (20-30\%).
 
 \section{Acknowledgments}
 
