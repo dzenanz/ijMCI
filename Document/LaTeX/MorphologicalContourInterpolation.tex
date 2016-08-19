@@ -2,6 +2,7 @@
 \usepackage{multirow}
 \usepackage[table,xcdraw]{xcolor}
 \usepackage[dvips]{graphicx}
+\usepackage[section]{placeins}
 %  hyperref should be the last package to be loaded.
 \usepackage[bookmarks,
 bookmarksopen,
@@ -253,11 +254,17 @@ A$_{iso}$ -- spacing of isotropic image with equivalent voxel volume.
 
 The tests were done on a PC which was bought in 2015. It has Windows 7,
 Xeon E3-1220 quad core processor, 32 GB of RAM and a solid state drive.
-Fig.~\ref{fig:qual} presents the qualitative results visually.
-Summary results are presented in Fig.~\ref{fig:dsc}.
-Figure~\ref{fig:c10l} gives detailed results for a single image.
 
-\begin{figure}[!htb]
+Figure~\ref{fig:qual} presents 2D and 3D visualization
+of quantitative validation of the proposed method.
+Figure~\ref{fig:dsc} provides summary results for a testing sparsity on both test images.
+
+Results demonstrate the expected loss of precision
+with increasing sparsity of manual segmentations.
+Figure~\ref{fig:c10l} gives detailed results for a single image with exploration
+of loss of precision in the three spatial directions.
+
+\begin{figure}[htbp]
 \center
 \includegraphics[scale=0.42]{c10x.png}
 \includegraphics[scale=0.42]{c10y.png}
@@ -277,10 +284,19 @@ Bottom left: axial. Bottom right: all three.}
 \includegraphics[scale=0.42]{diffY.png}
 \includegraphics[scale=0.42]{diffZ.png}
 \includegraphics[scale=0.42]{diffA.png}
-\itkcaption[qual]{Visual qualitative results.
+\itkcaption[qual]{Visualization of the interpolation errors.
 Same data and order as in Fig.~\ref{fig:Eval4}.
-Cyan, yellow and green pixels are false positives (oversegmentation).
-Violet, red and blue are false negatives (undersegmentation).}
+Cyan, yellow and green pixels are false positives
+(present in interpolated image, absent in ground truth).
+Violet, red and blue are false negatives
+(present in ground truth, absent in interpolated image).
+It can be easily seen that the structure of errors
+follows the axis of `manual' segmentation:
+the segmented slices at regular intervals cause the edges
+of object perpendicular to that axis to be missing.
+This is most pronounced for Z axis, because of its thickest spacing.
+When all three axes are used, false positives dominate.
+}
 \label{fig:qual}
 \end{figure}
 
@@ -296,15 +312,16 @@ Averaged over both images and four axes (X, Y, Z, X+Y+Z).}
 
 \begin{figure}[htb]
 \center
-\includegraphics[scale=0.7]{c10l-x.pdf}
-\includegraphics[scale=0.7]{c10l-y.pdf}
-\includegraphics[scale=0.7]{c10l-z.pdf}
-\includegraphics[scale=0.7]{c10l-a.pdf}
+\includegraphics[scale=0.65]{c10l-x.pdf}
+\includegraphics[scale=0.65]{c10l-y.pdf}
+\includegraphics[scale=0.65]{c10l-z.pdf}
+\includegraphics[scale=0.65]{c10l-a.pdf}
 \itkcaption[c10l]{Loss of precision for Case\_10. Legend the same as in Fig.~\ref{fig:dsc}.
 Top left: synthetic slicing perpendicular to sagittal axis. Top right: coronal.
 Bottom left: axial. Bottom right: all three.
 Because the resolution is already 3$\times$ lower along Z axis,
-adding sparsity exacerbates the problem -- most errors are false negatives (undersegmentation).}
+adding sparsity exacerbates the problem -- most errors are false negatives
+(pixels from ground truth are absent in the interpolated image).}
 \label{fig:c10l}
 \end{figure}
 
